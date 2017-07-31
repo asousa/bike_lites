@@ -6,7 +6,8 @@ FASTLED_USING_NAMESPACE
 
 #define NUM_LEDS 50
 #define NUM_MODES 5
-#define NUM_PALETTES 7
+#define NUM_PALETTES 8 
+// (int(sizeof(gPalettes)/sizeof(CRGBPalette16)) - 1)
 
 
 #define FRAMES_PER_SECOND  120
@@ -19,6 +20,7 @@ FASTLED_USING_NAMESPACE
 #define NUM_LEDS    50
 
 extern const TProgmemPalette16 WarmPastels_p PROGMEM;
+extern const TProgmemPalette16 Patriotic_p PROGMEM;
 
 CRGB leds[NUM_LEDS];
 
@@ -71,13 +73,13 @@ uint8_t palette_index = 0;
 
 typedef void (*SimplePatternList[])();
 const SimplePatternList gPatterns = { rainbow, rainbowWithGlitter, confetti, sinelon, juggle, bpm };
-const CRGBPalette16 gPalettes[] = { WarmPastels_p, RainbowColors_p,  OceanColors_p, CloudColors_p, LavaColors_p, ForestColors_p, HeatColors_p, PartyColors_p};
+const CRGBPalette16 gPalettes[] = { WarmPastels_p, Patriotic_p, RainbowColors_p,  OceanColors_p, CloudColors_p, LavaColors_p, ForestColors_p, HeatColors_p, PartyColors_p};
 
 
 
-
+// -------------------- MAIN LOOP --------------------------
+// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 void loop() {
-  // put your main code here, to run repeatedly:
   button_press();
   if (pushed[0]) {
     if ((millis() - pushed_time[0]) > 1000) {
@@ -104,13 +106,19 @@ void loop() {
   FastLED.delay(1000/FRAMES_PER_SECOND); 
 
   // do some periodic updates
-  EVERY_N_MILLISECONDS( 20 ) { gHue++; } // slowly cycle the "base color" through the rainbow
+  // (you can do ++ or -- here depending on which direction you want the animation to go)
+  EVERY_N_MILLISECONDS( 20 ) { gHue--; } // slowly cycle the "base color" through the rainbow
 }
+// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+// ----------------------------------------------------
+
+
+
 
 
 // ---------- methods ------------
-
 void button_press() {
+  // Read button states and change global settings accordingly
   int button[2];
   button[0] = digitalRead(BUTTON1_PIN);
   button[1] = digitalRead(BUTTON2_PIN);
@@ -118,9 +126,9 @@ void button_press() {
 for (int i=0; i<2; ++i) {
   if((long)(millis() - lastDebounceTime[i]) >= debounceDelay) {
     if (button[i]==0 && !pushed[i]) {
-      // debounced state is down, increment mode
-//      mode += (i==0? -1 : 1);
+      // debounced state is down -- Do stuff with it
       if (i==0) {
+        // Change mode
         mode += 1;
         if (mode > NUM_MODES) {mode = 0;}
         if (mode < 0) {mode = NUM_MODES;}
@@ -129,6 +137,7 @@ for (int i=0; i<2; ++i) {
         Serial.print("\n");
       }
       if (i==1) {
+        // Change palette
         palette_index += 1;
         if (palette_index > NUM_PALETTES) {palette_index = 0;}
         if (palette_index < 0) {palette_index = NUM_PALETTES;}
@@ -136,9 +145,7 @@ for (int i=0; i<2; ++i) {
         Serial.print("palette: ");
         Serial.print(palette_index);
         Serial.print("\n"); 
-        
       }
-      
       pushed[i] = true;
       pushed_time[i] = millis();
     }
@@ -153,52 +160,41 @@ for (int i=0; i<2; ++i) {
 
 
 // --------- Patterns -------------
-
-void rainbow() 
-{
-  // FastLED's built-in rainbow generator
-//  fill_rainbow( leds, NUM_LEDS, gHue, 7);
-//  fill_rainbow (struct CRGB *pFirstLED, int numToFill, uint8_t initialhue, uint8_t deltahue=5)
+void rainbow() {
+  // Rainbow fill across the length of the strand
   fill_palette(leds, NUM_LEDS, gHue, int(255/NUM_LEDS), currentPalette, 255, currentBlending); 
-//  fill_palette (CRGB *L, uint16_t N, uint8_t startIndex, uint8_t incIndex, const PALETTE &pal, uint8_t brightness, TBlendType blendType)
-
 }
 
-void rainbowWithGlitter() 
-{
-  // built-in FastLED rainbow, plus some random sparkly glitter
+void rainbowWithGlitter() {
+  // rainbow, plus some random sparkly glitter
   rainbow();
-  addGlitter(80);
+  addGlitter(60);
 }
 
-void addGlitter( fract8 chanceOfGlitter) 
-{
+void addGlitter( fract8 chanceOfGlitter) {
+// Randomly add some sparkles 
   if( random8() < chanceOfGlitter) {
     leds[ random16(NUM_LEDS) ] += CRGB::White;
   }
 }
 
-void confetti() 
-{
+void confetti() {
   // random colored speckles that blink in and fade smoothly
   fadeToBlackBy( leds, NUM_LEDS, 10);
   int pos = random16(NUM_LEDS);
   leds[pos] += ColorFromPalette(currentPalette, gHue + random8(64), 255, currentBlending); //CHSV( gHue + random8(64), 200, 255);
 }
 
-void sinelon()
-{
+void sinelon(){
   // a colored dot sweeping back and forth, with fading trails
   fadeToBlackBy( leds, NUM_LEDS, 20);
   int pos = beatsin16(13,0,NUM_LEDS);
   leds[pos] += ColorFromPalette(currentPalette, gHue, 192, currentBlending); //CHSV( gHue, 255, 192);
 }
 
-void bpm()
-{
+void bpm(){
   // colored stripes pulsing at a defined Beats-Per-Minute (BPM)
   uint8_t BeatsPerMinute = 62;
-//  CRGBPalette16 palette = PartyColors_p;
   uint8_t beat = beatsin8( BeatsPerMinute, 64, 255);
   for( int i = 0; i < NUM_LEDS; i++) { //9948
     leds[i] = ColorFromPalette(currentPalette, gHue+(i*2), beat-gHue+(i*10));
@@ -218,25 +214,55 @@ void juggle() {
 
 // ------------ Custom color palettes -------------------
 const TProgmemPalette16 WarmPastels_p PROGMEM = {
-//    CRGB(251, 189, 127),
-//    CRGB(219, 167, 121),
-//    CRGB(149, 179, 218),
-//    CRGB(254, 228, 229),
-//    CRGB(169, 219, 254),
-//
-//    CRGB(251, 189, 127),
-//    CRGB(219, 167, 121),
-//    CRGB(149, 179, 218),
-//    CRGB(254, 228, 229),
-//    CRGB(169, 219, 254),
-//    
-//    CRGB(251, 189, 127),
-//    CRGB(219, 167, 121),
-//    CRGB(149, 179, 218),
-//    CRGB(254, 228, 229),
-//    CRGB(169, 219, 254),
-//    CRGB::White
+//  CRGB::Black,
+  CRGB::HTMLColorCode(0x2F525E), // dark turquoise
+  CRGB::HTMLColorCode(0x3D7994), // steel blue
+  CRGB::HTMLColorCode(0x86bcff), // mid-light blue
+  CRGB::HTMLColorCode(0xC3D3E2), // grey-blue
+  CRGB::HTMLColorCode(0xa9dcff), // light blue
+  CRGB::HTMLColorCode(0x9cafb7), // slate-ish
+  CRGB::HTMLColorCode(0x949d6a), // army green
+  CRGB::HTMLColorCode(0xadb993), // avocado
+  CRGB::HTMLColorCode(0xd0d38f), // brighter avocado
+  CRGB::HTMLColorCode(0xFF7479), // saturated pink
 
+  CRGB::HTMLColorCode(0xffbfbe), // salmon
+  CRGB::HTMLColorCode(0xEE671E), // burnt orange
+  CRGB::HTMLColorCode(0xFF9D26), // saturated orange
+  CRGB::HTMLColorCode(0xf6ca83), // creamsicle
+  CRGB::HTMLColorCode(0xffecc1), // pale peach
+  CRGB::HTMLColorCode(0xfebf70), // creamy orange
+
+
+//  CRGB::White
+  
+//  
+//  CRGB::HTMLColorCode(0x2F525E), // dark turquoise
+//  CRGB::HTMLColorCode(0x3D7994), // steel blue
+//  CRGB::HTMLColorCode(0xC3D3E2), // grey-blue
+//  CRGB::HTMLColorCode(0xFCFBF5), // greyish
+//  CRGB::HTMLColorCode(0xEE671E), // burnt orange
+//
+//  CRGB::HTMLColorCode(0x9cafb7), // slate-ish
+//  CRGB::HTMLColorCode(0xadb993), // avocado
+//  CRGB::HTMLColorCode(0xd0d38f), // brighter avocado
+//  CRGB::HTMLColorCode(0xf6ca83), // creamsicle
+//  CRGB::HTMLColorCode(0x949d6a), // army green
+//
+//  CRGB::HTMLColorCode(0xffecc1), // pale peach
+//  CRGB::HTMLColorCode(0xfebf70), // creamy orange
+//  CRGB::HTMLColorCode(0xffbfbe), // salmon
+//  CRGB::HTMLColorCode(0xa9dcff), // light blue
+//  CRGB::HTMLColorCode(0x86bcff), // mid-light blue
+//
+//  CRGB::Black
+
+//    CRGB::HTMLColorCode(0xFF9D26), // saturated orange
+//    CRGB::HTMLColorCode(0xFF7479), // saturated pink
+};
+
+const TProgmemPalette16 Patriotic_p PROGMEM = {
+  // The default custom color example: red / white / blue  
     CRGB::Red,
     CRGB::Gray, // 'white' is too bright compared to red and blue
     CRGB::Blue,
