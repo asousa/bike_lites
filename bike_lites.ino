@@ -45,8 +45,8 @@ void setup() {
   FastLED.addLeds<LED_TYPE, LED_PIN1, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
   FastLED.setBrightness(brightness);
 
-  // limit my draw to 1W
-  FastLED.setMaxPowerInMilliWatts(1000);
+  // limit my draw to 5W (~8.2018... can't remember what I set it to at the burn) //1W
+  FastLED.setMaxPowerInMilliWatts(5000);
 
   currentBlending = LINEARBLEND;
   currentPalette = WarmPastels_p;
